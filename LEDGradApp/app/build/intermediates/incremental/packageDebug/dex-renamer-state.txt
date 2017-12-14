@@ -1,0 +1,7 @@
+#Thu Dec 14 18:11:53 EST 2017
+base.0=C\:\\Users\\jaxbu\\Coding\\Github\\LED-Grad-Cap\\LEDGradApp\\app\\build\\intermediates\\transforms\\dex\\debug\\folders\\1000\\10000\\instant-run-bootstrap_6f7e5a05b05289b386d91dc573dccdd0e7d92b4f
+renamed.1=classes.dex
+renamed.0=classes2.dex
+file.1=C\:\\Users\\jaxbu\\Coding\\Github\\LED-Grad-Cap\\LEDGradApp\\app\\build\\intermediates\\transforms\\dex\\debug\\folders\\1000\\10000\\instant-run_43f3177b17aa5700f1cc16e0936399f4550090fd\\classes.dex
+base.1=C\:\\Users\\jaxbu\\Coding\\Github\\LED-Grad-Cap\\LEDGradApp\\app\\build\\intermediates\\transforms\\dex\\debug\\folders\\1000\\10000\\instant-run_43f3177b17aa5700f1cc16e0936399f4550090fd
+file.0=C\:\\Users\\jaxbu\\Coding\\Github\\LED-Grad-Cap\\LEDGradApp\\app\\build\\intermediates\\transforms\\dex\\debug\\folders\\1000\\10000\\instant-run-bootstrap_6f7e5a05b05289b386d91dc573dccdd0e7d92b4f\\classes.dex
