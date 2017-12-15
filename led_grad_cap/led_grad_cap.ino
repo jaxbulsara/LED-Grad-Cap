@@ -24,8 +24,8 @@ const int defaultBrightness = 100 * (255 / 100);    // 100 - full brightness
 const int defaultScrollOffset = 6;
 const rgb24 defaultBackgroundColor = {0, 0, 0}; // black
 
-// counting variable
-int i;
+// counting variables
+int i, j;
 
 // Teensy 3.x has the LED on pin 13
 const int ledPin = 13;
@@ -34,10 +34,11 @@ const int ledPin = 13;
 int currentMillis;
 
 // serial message variables
-String message [] = {"", ""};
+String message [2][10];
+int command_queue [] = {0, 0};
 
 // initialize functions
-void log_pc(), log_bt(), serial_parse();
+void serial_parse();
 
 // setup function - runs once
 void setup() {
@@ -72,38 +73,68 @@ void loop() {
 	currentMillis = millis();
 
 	// check if bluetooth serial is sending anything
-	// convert message to lowercase for parsing
+	// "+" indicates a new command
 	if(Serial1.available() or Serial.available()) {
 		while (Serial.available()) {
-			message[0] += char(Serial.read());
+			char temp = char(Serial.read());
+			Serial.print("temp: ");
+			Serial.println(temp);
+
+			// check if new character is a "+" and first character is '+'
+			if (temp != '+' and char(message[0][command_queue[0]].charAt(0)) != '+') {
+				// do nothing
+				;
+			} else if (temp == '+' and char(message[0][command_queue[0]].charAt(0)) == '+') {
+				// increment command queue to move to next command
+				command_queue[0]++;
+				message[0][command_queue[0]] += temp;
+			} else {
+				message[0][command_queue[0]] += temp;
+			}
 		}
 
 		while (Serial1.available()) {
-			message[1] += char(Serial1.read());
+			char temp = char(Serial1.read());
+			Serial1.print("temp: ");
+			Serial1.println(temp);
+
+			// check if new character is a "+" and first character is '+'
+			if (temp != '+' and char(message[1][command_queue[1]].charAt(0)) != '+') {
+				// do nothing
+				;
+			} else if (temp == '+' and char(message[1][command_queue[1]].charAt(0)) == '+') {
+				// increment command queue to move to next command
+				command_queue[1]++;
+				message[1][command_queue[1]] += temp;
+			} else {
+				message[1][command_queue[1]] += temp;
+			}
+
+			// wait 2ms
+			currentMillis = millis();
+			while(millis() - currentMillis < 2) {;}
 		}
+	} else {
+		// parse serial messages and then clear message variable
+		serial_parse();
 	}
-
-	// parse serial messages and then clear message variable
-	serial_parse();
-}
-
-void log_pc() {
-	Serial.println(message[0]);
-}
-
-void log_bt() {
-	Serial1.println(message[1]);
 }
 
 void serial_parse() {
-	for (i = 0; i < 1; i++) {
-		if (message[i] != "") {
-			// set to lowercase
-			message[i].toLowerCase();
+	for (i = 0; i < 2; i++) {
+		for (j = 0; j <= command_queue[i]; j++) {
+			if (message[i][j] != "") {
+				// set to lowercase
+				message[i][j].toLowerCase();
 
-			Serial.println(message[i]);
+				Serial1.print("message: ");
+				Serial1.println(message[i][j]);
 
-			message[i] = "";
+				message[i][j] = "";
+			}
 		}
+
+		// reset command_queue
+		command_queue[i] = 0;
 	}
 }
