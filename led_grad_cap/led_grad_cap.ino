@@ -1,4 +1,10 @@
 #include <SmartMatrix3.h>
+#include <SD.h>
+#include "GIFDecoder.h"
+#include "FilenameFunctions.h"
+
+#define DISPLAY_TIME_SECONDS 10 // for gif
+#define ENABLE_SCROLLING  1		// for sd error
 
 /* ----------------- */
 /* Smartmatrix stuff */
@@ -24,6 +30,40 @@ const int defaultBrightness = 100 * (255 / 100);    // 100 - full brightness
 const int defaultScrollOffset = 6;
 const rgb24 defaultBackgroundColor = {0, 0, 0}; // black
 
+// gif player
+/* template parameters are maxGifWidth, maxGifHeight, lzwMaxBits
+ *
+ * The lzwMaxBits value of 12 supports all GIFs, but uses 16kB RAM
+ * lzwMaxBits can be set to 10 or 11 for small displays, 12 for large displays
+ * All 32x32-pixel GIFs tested work with 11, most work with 10
+ */
+GifDecoder<kMatrixWidth, kMatrixHeight, 12> decoder;
+
+// Chip select for SD card on the SmartMatrix Shield
+#define SD_CS BUILTIN_SDCARD
+
+#define GIF_DIRECTORY "/gifs/"
+
+int numGifs;
+
+void screenClearCallback(void) {
+  backgroundLayer.fillScreen({0,0,0});
+}
+
+void updateScreenCallback(void) {
+  backgroundLayer.swapBuffers();
+}
+
+void drawPixelCallback(int16_t x, int16_t y, uint8_t red, uint8_t green, uint8_t blue) {
+  backgroundLayer.drawPixel(x, y, {red, green, blue});
+}
+
+// scrolling text content
+String textOptions [50] = {
+	"Test string 1",
+	"Test string 2"
+};
+
 // counting variables
 int i, j;
 
@@ -37,19 +77,50 @@ int currentMillis;
 String message [2][10];
 int commandQueue [] = {0, 0};
 
-String textOptions [100];
+// random selection variables
+/*
+randType
+	0 - scrolling text
+	1 - gif
+	2 - pattern
+	3 - thank you
+*/
+int randType;
+
+// randText - between 0 and the number of text options available
+int numTextOptions = 0;
+int randText;
+
+// randGif - which gif to play
+int randGif;
+
+// int randPattern - which pattern to play
+int numPatterns = 0;
+int randPattern;
 
 // initialize functions
 void serialParse();
 bool checkMode(String command, String mode);
-void scrollText(String text);
-void thankYouText();
-void playGif(int index);
+void randomSelector();
+void scrollText(int index); 	bool textFlag = false;
+//void thankYouText();			bool thankFlag = false;
+void playGif(int index);		bool gifFlag = true;
+void pattern(int index);		bool patternFlag = false;
 
 // setup function - runs once
 void setup() {
 	// initialize led on Teensy
 	pinMode(ledPin, OUTPUT);
+
+	// GIF setup
+	decoder.setScreenClearCallback(screenClearCallback);
+    decoder.setUpdateScreenCallback(updateScreenCallback);
+    decoder.setDrawPixelCallback(drawPixelCallback);
+
+    decoder.setFileSeekCallback(fileSeekCallback);
+    decoder.setFilePositionCallback(filePositionCallback);
+    decoder.setFileReadCallback(fileReadCallback);
+    decoder.setFileReadBlockCallback(fileReadBlockCallback);
 
 	// begin serial channels
 	// pc - Serial
@@ -72,6 +143,40 @@ void setup() {
 	// clear screen
     backgroundLayer.fillScreen(defaultBackgroundColor);
     backgroundLayer.swapBuffers();
+
+	// initialize the SD card at full speed
+    pinMode(SD_CS, OUTPUT);
+    if (!SD.begin(SD_CS)) {
+#if ENABLE_SCROLLING == 1
+        scrollingLayer.start("No SD card", -1);
+#endif
+        Serial.println("No SD card");
+        while(1);
+    }
+
+	// Determine how many animated GIF files exist
+    numGifs = enumerateGIFFiles(GIF_DIRECTORY, false);
+
+    if(numGifs < 0) {
+#if ENABLE_SCROLLING == 1
+        scrollingLayer.start("No gifs directory", -1);
+#endif
+        Serial.println("No gifs directory");
+        while(1);
+    }
+
+    if(!numGifs) {
+#if ENABLE_SCROLLING == 1
+        scrollingLayer.start("Empty gifs directory", -1);
+#endif
+        Serial.println("Empty gifs directory");
+        while(1);
+    }
+
+	// random selection setup
+	// count number of non empty text contents
+	i = 0;
+	while (textOptions[i++] != "") {numTextOptions++;}
 }
 
 // loop function - runs continuously
@@ -122,8 +227,6 @@ void loop() {
 		// parse serial messages and then clear message variable
 		serialParse();
 	}
-
-
 }
 
 void serialParse() {
