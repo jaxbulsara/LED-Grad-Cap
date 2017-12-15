@@ -71,7 +71,7 @@ int i, j;
 const int ledPin = 13;
 
 // current time variable
-int currentMillis;
+unsigned long currentMillis;
 
 // serial message variables
 String message [2][10];
@@ -93,6 +93,8 @@ int randText;
 
 // randGif - which gif to play
 int randGif;
+unsigned long gifEndMillis;
+bool gifPlaying = false;
 
 // int randPattern - which pattern to play
 int numPatterns = 0;
@@ -174,6 +176,9 @@ void setup() {
     }
 
 	// random selection setup
+	// random seed
+	randomSeed(analogRead(14));
+
 	// count number of non empty text contents
 	i = 0;
 	while (textOptions[i++] != "") {numTextOptions++;}
@@ -181,8 +186,6 @@ void setup() {
 
 // loop function - runs continuously
 void loop() {
-	currentMillis = millis();
-
 	// check if bluetooth serial is sending anything
 	// "+" indicates a new command
 	if(Serial1.available() or Serial.available()) {
@@ -227,6 +230,8 @@ void loop() {
 		// parse serial messages and then clear message variable
 		serialParse();
 	}
+
+	playGif(0);
 }
 
 void serialParse() {
@@ -254,4 +259,30 @@ bool checkMode(String command, String mode) {
 	if (command.indexOf(mode) > 0) {
 		return 1;
 	} else {return 0;}
+}
+
+void randomSelector() {
+
+}
+
+void playGif(int index) {
+	if (!gifPlaying){
+		if (openGifFilenameByIndex(GIF_DIRECTORY, index) >= 0) {
+			// Can clear screen for new animation here, but this might cause flicker with short animations
+			// matrix.fillScreen(COLOR_BLACK);
+			// matrix.swapBuffers();
+
+			decoder.startDecoding();
+
+			// Calculate time in the future to terminate animation
+			gifEndMillis = millis() + (DISPLAY_TIME_SECONDS * 1000);
+
+			gifPlaying = true;
+		}
+	}
+
+	if (gifEndMillis < millis()) {
+		gifPlaying = false;
+	}
+	decoder.decodeFrame();
 }
