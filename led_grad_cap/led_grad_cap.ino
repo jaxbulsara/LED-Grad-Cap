@@ -35,10 +35,16 @@ int currentMillis;
 
 // serial message variables
 String message [2][10];
-int command_queue [] = {0, 0};
+int commandQueue [] = {0, 0};
+
+String textOptions [100];
 
 // initialize functions
-void serial_parse();
+void serialParse();
+bool checkMode(String command, String mode);
+void scrollText(String text);
+void thankYouText();
+void playGif(int index);
 
 // setup function - runs once
 void setup() {
@@ -75,66 +81,74 @@ void loop() {
 	// check if bluetooth serial is sending anything
 	// "+" indicates a new command
 	if(Serial1.available() or Serial.available()) {
+		digitalWrite(ledPin, HIGH);
 		while (Serial.available()) {
 			char temp = char(Serial.read());
-			Serial.print("temp: ");
-			Serial.println(temp);
 
 			// check if new character is a "+" and first character is '+'
-			if (temp != '+' and char(message[0][command_queue[0]].charAt(0)) != '+') {
+			if (temp != '+' and char(message[0][commandQueue[0]].charAt(0)) != '+') {
 				// do nothing
 				;
-			} else if (temp == '+' and char(message[0][command_queue[0]].charAt(0)) == '+') {
+			} else if (temp == '+' and char(message[0][commandQueue[0]].charAt(0)) == '+') {
 				// increment command queue to move to next command
-				command_queue[0]++;
-				message[0][command_queue[0]] += temp;
+				commandQueue[0]++;
+				message[0][commandQueue[0]] += temp;
 			} else {
-				message[0][command_queue[0]] += temp;
+				message[0][commandQueue[0]] += temp;
 			}
 		}
 
 		while (Serial1.available()) {
 			char temp = char(Serial1.read());
-			Serial1.print("temp: ");
-			Serial1.println(temp);
 
 			// check if new character is a "+" and first character is '+'
-			if (temp != '+' and char(message[1][command_queue[1]].charAt(0)) != '+') {
+			if (temp != '+' and char(message[1][commandQueue[1]].charAt(0)) != '+') {
 				// do nothing
 				;
-			} else if (temp == '+' and char(message[1][command_queue[1]].charAt(0)) == '+') {
+			} else if (temp == '+' and char(message[1][commandQueue[1]].charAt(0)) == '+') {
 				// increment command queue to move to next command
-				command_queue[1]++;
-				message[1][command_queue[1]] += temp;
+				commandQueue[1]++;
+				message[1][commandQueue[1]] += temp;
 			} else {
-				message[1][command_queue[1]] += temp;
+				message[1][commandQueue[1]] += temp;
 			}
 
-			// wait 2ms
+			// wait 2ms for available() to catch up to bluetooth serial pin
 			currentMillis = millis();
 			while(millis() - currentMillis < 2) {;}
 		}
+		digitalWrite(ledPin, LOW);
 	} else {
 		// parse serial messages and then clear message variable
-		serial_parse();
+		serialParse();
 	}
+
+
 }
 
-void serial_parse() {
+void serialParse() {
 	for (i = 0; i < 2; i++) {
-		for (j = 0; j <= command_queue[i]; j++) {
+		for (j = 0; j <= commandQueue[i]; j++) {
 			if (message[i][j] != "") {
 				// set to lowercase
 				message[i][j].toLowerCase();
 
-				Serial1.print("message: ");
-				Serial1.println(message[i][j]);
+				// check command type
+				if (checkMode(message[i][j], "scrolltext")) {
+
+				}
 
 				message[i][j] = "";
 			}
 		}
 
-		// reset command_queue
-		command_queue[i] = 0;
+		// reset commandQueue
+		commandQueue[i] = 0;
 	}
+}
+
+bool checkMode(String command, String mode) {
+	if (command.indexOf(mode) > 0) {
+		return 1;
+	} else {return 0;}
 }
