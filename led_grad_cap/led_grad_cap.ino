@@ -161,7 +161,7 @@ int commandQueue [] = {0, 0};
 
 // random selection variables
 int status = 0;
-int modeToPlay;
+int modeToPlay = -1;
 int indexToPlay;
 
 // randText - between 0 and the number of text options available
@@ -338,9 +338,7 @@ void serialParse() {
 		+thank:{0, 1} - toggle thank
 		+addText:{text to add} - adds text to textOptions
 		+addThank:{thank to add} - adds text to thankOptions
-		+queue:{scroll, gif, thank},{index} - queues the following to be played next
-		+repeat:{scroll, gif, thank},{index} - plays the following continuously
-		+status - returns which mode and index is playing
+		+status - returns which mode and index is playing and state of toggles
 		+clear - clears display until +begin is sent
 		+begin - starts randomSelector
 		+rotate:{0,90,180,270}
@@ -348,6 +346,8 @@ void serialParse() {
 			-90 is back left
 			-180 is front left
 			-270 is front right
+		+queue:{scroll, gif, thank},{index} - queues the following to be played next
+		+repeat:{scroll, gif, thank},{index} - plays the following continuously
 	*/
 
 	int colon, comma;
@@ -358,24 +358,24 @@ void serialParse() {
 				message[i][j].toLowerCase();
 
 				// check command type
-				if (checkCommand(message[i][j], "scroll")) {
+				if (checkCommand(message[i][j], "toggletext")) {
 					colon = message[i][j].indexOf(':');
 					modeToggles[0] = message[i][j].substring(colon+1).toInt();
-					Serial1.print("scrollText: ");
+					Serial1.print("text: ");
 					Serial1.println(modeToggles[0]);
 				}
 
-				else if (checkCommand(message[i][j], "gif")) {
+				else if (checkCommand(message[i][j], "togglegif")) {
 					colon = message[i][j].indexOf(':');
 					modeToggles[1] = message[i][j].substring(colon+1).toInt();
-					Serial1.print("playGif: ");
+					Serial1.print("gif: ");
 					Serial1.println(modeToggles[1]);
 				}
 
-				else if (checkCommand(message[i][j], "thank")) {
+				else if (checkCommand(message[i][j], "togglethanks")) {
 					colon = message[i][j].indexOf(':');
 					modeToggles[2] = message[i][j].substring(colon+1).toInt();
-					Serial1.print("thankYouText: ");
+					Serial1.print("thanks: ");
 					Serial1.println(modeToggles[2]);
 				}
 
@@ -386,6 +386,52 @@ void serialParse() {
 					Serial1.print(textOptions[numOptionsInMode[0] - 1]);
 					Serial1.print(") to position ");
 					Serial1.println(numOptionsInMode[0] - 1);
+				}
+
+				else if (checkCommand(message[i][j], "addthanks")) {
+					colon = message[i][j].indexOf(':');
+					thankOptions[numOptionsInMode[2]++] = message[i][j].substring(colon+1);
+					Serial1.print("added thanks to (");
+					Serial1.print(thankOptions[numOptionsInMode[2] - 1]);
+					Serial1.print(") to position ");
+					Serial1.println(numOptionsInMode[2] - 1);
+				}
+
+				else if(checkCommand(message[i][j], "status")) {
+					Serial1.print("Currently playing ");
+
+					if (modeToPlay == 0) {
+						Serial1.print("text from position ");
+						Serial1.println(indexToPlay);
+					} else if (modeToPlay == 1) {
+						Serial1.print("gif from position ");
+						Serial1.println(indexToPlay);
+					} else if (modeToPlay == 2) {
+						Serial1.print("thanks from position ");
+						Serial1.println(indexToPlay);
+					} else if (modeToPlay == -1) {
+						Serial1.println("nothing");
+					}
+
+					Serial1.print("text: "); Serial1.print(modeToggles[0]);
+					Serial1.print("; gif: "); Serial1.print(modeToggles[1]);
+					Serial1.print("; thanks: "); Serial1.println(modeToggles[2]);
+				}
+
+				else if (checkCommand(message[i][j], "clear")) {
+					// turn all modes off
+					Serial1.println("Turning all modes off");
+					for (k = 0; k < 3; k++) {
+						modeToggles[k] = 0;
+					}
+				}
+
+				else if (checkCommand(message[i][j], "begin")) {
+					// turn all modes on
+					Serial1.println("Turning all modes on");
+					for (k = 0; k < 3; k++) {
+						modeToggles[k] = 1;
+					}
 				}
 
 				message[i][j] = "";
@@ -415,8 +461,15 @@ void randomSelector() {
 		indexToPlay = random(numOptionsInMode[modeToPlay]);
 	}
 	if (!(modeToggles[0] || modeToggles[1] || modeToggles[2])) {
-		// if nothing is toggled on, do nothing.
-		;
+		// if nothing is toggled on, clear all
+		// something might get stuck on the screen if playMode isn't called continuously
+		backgroundLayer.fillScreen(defaultBackgroundColor);
+		backgroundLayer.swapBuffers();
+		scrollingLayer.start("", 1);
+		scrollingLayer2.start("", 1);
+
+		// set mode to nothing
+		modeToPlay = -1;
 	} else {
 		// play the mode and index generated
 		status = playMode(modeToPlay, indexToPlay);
