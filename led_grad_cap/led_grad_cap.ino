@@ -345,6 +345,11 @@ void serialParse() {
 		+status - returns which mode and index is playing
 		+clear - clears display until +begin is sent
 		+begin - starts randomSelector
+		+rotate:{0,90,180,270}
+			-0 is back right
+			-90 is back left
+			-180 is front left
+			-270 is front right
 	*/
 
 	int colon, comma;
@@ -452,6 +457,10 @@ int thankYouText(int index) {
 
 		// hack to make sure thanks goes away
 		scrollingLayer.start("", 1);
+
+		// clear background
+		backgroundLayer.fillScreen(defaultBackgroundColor);
+		backgroundLayer.swapBuffers();
 	}
 
 	return isThanking;
@@ -460,10 +469,6 @@ int thankYouText(int index) {
 int playGif(int index) {
 	// ucf - 41
 	if (!gifPlaying){
-		// clear background
-		backgroundLayer.fillScreen(defaultBackgroundColor);
-		backgroundLayer.swapBuffers();
-
 		if (openGifFilenameByIndex(GIF_DIRECTORY, index) >= 0) {
 			// Can clear screen for new animation here, but this might cause flicker with short animations
 			// matrix.fillScreen(COLOR_BLACK);
