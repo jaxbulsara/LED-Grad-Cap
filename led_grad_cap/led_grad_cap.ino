@@ -165,7 +165,6 @@ int modeToPlay;
 int indexToPlay;
 
 // randText - between 0 and the number of text options available
-int numTextOptions = 0;
 int randText;
 int isScrolling = false;
 
@@ -175,7 +174,6 @@ unsigned long gifEndMillis;
 bool gifPlaying = false;
 
 // int randThanks - which person to thank
-int numThanks = 0;
 int randthanks;
 bool isThanking = false;
 
@@ -196,9 +194,9 @@ int playMode(int mode, int index) {
 	return funcs[mode](index);
 }
 
-bool modeToggles [] = {1, 1, 1, 0};
+bool modeToggles [] = {0, 0, 0};
 int numModes;
-int numOptionsInMode [4];
+int numOptionsInMode [3];
 int queue [10];
 
 // setup function - runs once
@@ -362,7 +360,32 @@ void serialParse() {
 				// check command type
 				if (checkCommand(message[i][j], "scroll")) {
 					colon = message[i][j].indexOf(':');
+					modeToggles[0] = message[i][j].substring(colon+1).toInt();
+					Serial1.print("scrollText: ");
+					Serial1.println(modeToggles[0]);
+				}
 
+				else if (checkCommand(message[i][j], "gif")) {
+					colon = message[i][j].indexOf(':');
+					modeToggles[1] = message[i][j].substring(colon+1).toInt();
+					Serial1.print("playGif: ");
+					Serial1.println(modeToggles[1]);
+				}
+
+				else if (checkCommand(message[i][j], "thank")) {
+					colon = message[i][j].indexOf(':');
+					modeToggles[2] = message[i][j].substring(colon+1).toInt();
+					Serial1.print("thankYouText: ");
+					Serial1.println(modeToggles[2]);
+				}
+
+				else if (checkCommand(message[i][j], "addtext")) {
+					colon = message[i][j].indexOf(':');
+					textOptions[numOptionsInMode[0]++] = message[i][j].substring(colon+1);
+					Serial1.print("added text(");
+					Serial1.print(textOptions[numOptionsInMode[0] - 1]);
+					Serial1.print(") to position ");
+					Serial1.println(numOptionsInMode[0] - 1);
 				}
 
 				message[i][j] = "";
@@ -381,7 +404,7 @@ bool checkCommand(String command, String mode) {
 }
 
 void randomSelector() {
-	if (!status) {
+	if (!status && (modeToggles[0] || modeToggles[1] || modeToggles[2])) {
 		// generate a random number and check if that index is on
 		do {
 			modeToPlay = random(numModes);
@@ -391,9 +414,13 @@ void randomSelector() {
 		// depending on the mode, choose a different index to generate
 		indexToPlay = random(numOptionsInMode[modeToPlay]);
 	}
-
-	// play the mode and index generated
-	status = playMode(modeToPlay, indexToPlay);
+	if (!(modeToggles[0] || modeToggles[1] || modeToggles[2])) {
+		// if nothing is toggled on, do nothing.
+		;
+	} else {
+		// play the mode and index generated
+		status = playMode(modeToPlay, indexToPlay);
+	}
 }
 
 int scrollText(int index) {
