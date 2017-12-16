@@ -197,10 +197,14 @@ int playMode(int mode, int index) {
 bool modeToggles [] = {0, 0, 0};
 int numModes;
 int numOptionsInMode [3];
-int queue [10];
+int queue [10][2] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 bool queueFlag = false;
+bool queuePosition = 0;
 bool repeatFlag = false;
+int repeatMode, repeatIndex;
+
+int rotation = 0;
 
 // setup function - runs once
 void setup() {
@@ -330,7 +334,27 @@ void loop() {
 		serialParse();
 	}
 
-	randomSelector();
+	if (queueFlag) {
+		queueFlag = playMode(queue[queuePosition][0], queue[queuePosition][1]);
+
+		if (!queueFlag) {
+			queue[queuePosition][0] = -1;
+			queue[queuePosition][1] = -1;
+			queuePosition++;
+
+			if (queue[queuePosition][0] != -1) {
+				queueFlag = 1;
+			}
+		}
+	}
+
+	else if (repeatFlag) {
+		playMode(repeatMode, repeatIndex);
+	}
+
+	else {
+		randomSelector();
+	}
 }
 
 void serialParse() {
@@ -419,6 +443,9 @@ void serialParse() {
 					Serial1.print("text: "); Serial1.print(modeToggles[0]);
 					Serial1.print("; gif: "); Serial1.print(modeToggles[1]);
 					Serial1.print("; thanks: "); Serial1.println(modeToggles[2]);
+
+					Serial1.print("rotation: ");
+					Serial1.println(rotation);
 				}
 
 				else if (checkCommand(message[i][j], "clear")) {
@@ -430,6 +457,7 @@ void serialParse() {
 
 					// reset rotation
 					matrix.setRotation(rotation0);
+					rotation = 0;
 
 					// reset variables
 					modeToPlay = -1;
@@ -452,7 +480,7 @@ void serialParse() {
 
 				else if (checkCommand(message[i][j], "setrotation")) {
 					colon = message[i][j].indexOf(':');
-					int rotation = message[i][j].substring(colon+1).toInt();
+					rotation = message[i][j].substring(colon+1).toInt();
 
 					if (rotation == 0) {
 						matrix.setRotation(rotation0);
@@ -561,7 +589,7 @@ int thankYouText(int index) {
 		scrollingLayer2.setFont(font6x10);
 		scrollingLayer2.setMode(wrapForward);
 		scrollingLayer2.setSpeed(40);
-		scrollingLayer2.setOffsetFromTop(matrix.getScreenHeight() / 2);
+		scrollingLayer2.setOffsetFromTop(matrix.getScreenHeight() / 2 - 1);
 
 		int stringLength = thankOptions[index].length() + 1;
 		char temp [stringLength];
