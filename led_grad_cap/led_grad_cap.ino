@@ -424,6 +424,9 @@ void serialParse() {
 					for (k = 0; k < 3; k++) {
 						modeToggles[k] = 0;
 					}
+
+					// reset rotation
+					matrix.setRotation(rotation0);
 				}
 
 				else if (checkCommand(message[i][j], "begin")) {
@@ -432,6 +435,27 @@ void serialParse() {
 					for (k = 0; k < 3; k++) {
 						modeToggles[k] = 1;
 					}
+
+					// reset rotation
+					matrix.setRotation(rotation0);
+				}
+
+				else if (checkCommand(message[i][j], "rotate")) {
+					colon = message[i][j].indexOf(':');
+					int rotation = message[i][j].substring(colon+1).toInt();
+
+					if (rotation == 0) {
+						matrix.setRotation(rotation0);
+					} else if (rotation == 90) {
+						matrix.setRotation(rotation90);
+					} else if (rotation == 180) {
+						matrix.setRotation(rotation180);
+					} else if (rotation == 270) {
+						matrix.setRotation(rotation270);
+					}
+
+					Serial1.print("set rotation to ");
+					Serial1.println(rotation);
 				}
 
 				message[i][j] = "";
