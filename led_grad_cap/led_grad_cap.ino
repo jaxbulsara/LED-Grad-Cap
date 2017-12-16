@@ -60,19 +60,94 @@ void drawPixelCallback(int16_t x, int16_t y, uint8_t red, uint8_t green, uint8_t
 }
 
 // scrolling text content
-String textOptions [50] = {
-	"What the fuck did you just fucking say about me you little bitch?",
-	"Test string 2"
+String textOptions [100] = {
+	"University of Central Florida",
+	"Burnett Honors College",
+	"College of Engineering and Computer Science",
+	"Mechanical Engineering but I do this for fun.",
+	"UCF Chess Club",
+	"UCF SAE BAJA!!",
+	"Built on Teensy 3.5",
+	"HC-06 Bluetooth Module",
+	"Smartmatrix3",
+	"LED Matrix from Adafruit",
+	"Hi mom!",
+	"Hey person behind me",
+	"DO IT, just DO IT! Dont let your dreams be dreams.",
+	"Gr8 b8, m8. I rel8, str8 appreci8, and congratul8.",
+	"Has anyone really been far even as decided to use even go want to do look more like?",
+	"I sexually Identify as an Attack Helicopter.",
+	"I can no longer resist the pizza.",
+	"Whats a pupper? A small doggo. Whats a doggo? A big ol pupper.",
+	"To be fair, you have to have a very high IQ to understand Rick and Morty.",
+	"Seminole High School",
+	"Sanford Middle School",
+	"Goldsboro Elementary School"
 };
 
 // thanking text content
-String thankOptions [50] = {
+String thankOptions [100] = {
 	"My parents, Tushar and Anila Bulsara.",
-	"/r/me_irl"
+	"/r/me_irl",
+	"My sister, Jenisha Bulsara",
+	"My grandmother, Saraswatiben Mistry",
+	"My friend, Kyle Mueller",
+	"The real MVP, Amber Morgan",
+	"All my friends and family",
+	"Chinmaya Mission",
+	"Richard Lamberty",
+	"Chris Delacruz",
+	"Wyatt Brooks",
+	"Caroline Kamm",
+	"Jay Scofield",
+	"Jane Cooper",
+	"UCF BAJA",
+	"UCF Chess Club22",
+	"Saurabh Sudesh",
+	"Ishika Khondaker",
+	"Aldwin DeGuzman",
+	"Tahira Tasnim",
+	"The internet (rip net neutrality)",
+	"Alex Koohyar",
+	"Evan Rapp",
+	"Michell Zhong",
+	"Susan Brennan",
+	"Doug Hernandez",
+	"Melody Sweigert",
+	"Mindy Craft, for making sure I got through IB.",
+	"Trung Vong",
+	"Manhar Dalal",
+	"Jennifer Vigilante",
+	"Jasper Zaporteza",
+	"Tyler Hudson",
+	"Tyler Clark",
+	"Nick Chau",
+	"Sammy Wohl",
+	"Arnold Banner",
+	"Rafael Rosado",
+	"Rob Tukdarian",
+	"Dom Cinefro",
+	"Sam Johnson",
+	"Vicente Porcar",
+	"Alex (Cheese) Voce",
+	"Daniel Healy",
+	"My senior design team: Therese Salas, Hayden Bonnen, Ryan Kraft. And our advisor: Dr. Shawn Putnam",
+	"Kurt Stresau",
+	"Natasha Jones",
+	"Ryker Chute",
+	"Kyle Fryman",
+	"Jenna Famiglietti and her family",
+	"Lynda.com",
+	"Jeffrey Kauffman",
+	"Don Harper for running the Innovation Lab, where I made this hat",
+	"The UCF Library",
+	"The study room in the honors college",
+	"Parking lot B6 for always having parking",
+
 };
 
 // counting variables
-int i, j;
+int i, j, k;
 
 // Teensy 3.x has the LED on pin 13
 const int ledPin = 13;
@@ -99,10 +174,6 @@ int randGif;
 unsigned long gifEndMillis;
 bool gifPlaying = false;
 
-// int randPattern - which pattern to play
-int numPatterns = 0;
-int randPattern;
-
 // int randThanks - which person to thank
 int numThanks = 0;
 int randthanks;
@@ -115,13 +186,12 @@ void randomSelector();
 int scrollText(int index);	// index 0
 int playGif(int index);	// index 1
 int thankYouText(int index);		// index 2
-int playPattern(int index);	// index 3
 
 // function indexing modes
 int playMode(int mode, int index) {
 	typedef int (*f) (int);
 
-	static f funcs[] = {scrollText, playGif, thankYouText, playPattern};
+	static f funcs[] = {scrollText, playGif, thankYouText};
 
 	return funcs[mode](index);
 }
@@ -129,7 +199,7 @@ int playMode(int mode, int index) {
 bool modeToggles [] = {1, 1, 1, 0};
 int numModes;
 int numOptionsInMode [4];
-int queue [2];
+int queue [10];
 
 // setup function - runs once
 void setup() {
@@ -263,6 +333,21 @@ void loop() {
 }
 
 void serialParse() {
+	/*
+	available commands:
+		+scroll:{0, 1} - toggle scrollText
+		+gif:{0, 1} - toggle playGif
+		+thank:{0, 1} - toggle thank
+		+addText:{text to add} - adds text to textOptions
+		+addThank:{thank to add} - adds text to thankOptions
+		+queue:{scroll, gif, thank},{index} - queues the following to be played next
+		+repeat:{scroll, gif, thank},{index} - plays the following continuously
+		+status - returns which mode and index is playing
+		+clear - clears display until +begin is sent
+		+begin - starts randomSelector
+	*/
+
+	int colon, comma;
 	for (i = 0; i < 2; i++) {
 		for (j = 0; j <= commandQueue[i]; j++) {
 			if (message[i][j] != "") {
@@ -270,7 +355,8 @@ void serialParse() {
 				message[i][j].toLowerCase();
 
 				// check command type
-				if (checkCommand(message[i][j], 1)) {
+				if (checkCommand(message[i][j], "scroll")) {
+					colon = message[i][j].indexOf(':');
 
 				}
 
@@ -283,14 +369,13 @@ void serialParse() {
 	}
 }
 
-bool checkCommand(String command, int mode) {
+bool checkCommand(String command, String mode) {
 	if (command.indexOf(mode) > 0) {
 		return 1;
 	} else {return 0;}
 }
 
 void randomSelector() {
-
 	if (!status) {
 		// generate a random number and check if that index is on
 		do {
@@ -373,6 +458,7 @@ int thankYouText(int index) {
 }
 
 int playGif(int index) {
+	// ucf - 41
 	if (!gifPlaying){
 		// clear background
 		backgroundLayer.fillScreen(defaultBackgroundColor);
@@ -397,8 +483,4 @@ int playGif(int index) {
 	}
 	decoder.decodeFrame();
 	return gifPlaying;
-}
-
-int playPattern(int index) {
-	return 0;
 }
