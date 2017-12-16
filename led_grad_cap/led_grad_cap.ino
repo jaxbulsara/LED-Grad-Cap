@@ -373,8 +373,11 @@ void serialParse() {
 			-90 is back left
 			-180 is front left
 			-270 is front right
-		+queue:{scroll, gif, thank},{index} - queues the following to be played next
-		+repeat:{scroll, gif, thank},{index} - plays the following continuously
+		+queue:{0, 1, 2},{index} - queues the following to be played next
+		+repeat:{0, 1, 2},{index} - plays the following continuously
+			0 - text
+			1 - gif
+			2 - thanks
 	*/
 
 	int colon, comma;
@@ -425,19 +428,45 @@ void serialParse() {
 				}
 
 				else if(checkCommand(message[i][j], "status")) {
-					Serial1.print("Currently playing ");
+					if (queueFlag) {
+						Serial1.print("Currently playing queue - ");
+						if (queue[queuePosition][0] == 0) {
+							Serial1.print("text from position ");
+							Serial1.println(queue[queuePosition][1]);
+						} else if (queue[queuePosition][0] == 1) {
+							Serial1.print("gif from position ");
+							Serial1.println(queue[queuePosition][1]);
+						} else if (queue[queuePosition][0] == 2) {
+							Serial1.print("thanks from position ");
+							Serial1.println(queue[queuePosition][1]);
+						}
+					} else if (repeatFlag) {
+						Serial1.print("Currently repeating ");
+						if (repeatMode == 0) {
+							Serial1.print("text from position ");
+							Serial1.println(repeatIndex);
+						} else if (repeatMode == 1) {
+							Serial1.print("gif from position ");
+							Serial1.println(repeatIndex);
+						} else if (repeatMode == 2) {
+							Serial1.print("thanks from position ");
+							Serial1.println(repeatIndex);
+						}
+					} else {
+						Serial1.print("Currently playing ");
 
-					if (modeToPlay == 0) {
-						Serial1.print("text from position ");
-						Serial1.println(indexToPlay);
-					} else if (modeToPlay == 1) {
-						Serial1.print("gif from position ");
-						Serial1.println(indexToPlay);
-					} else if (modeToPlay == 2) {
-						Serial1.print("thanks from position ");
-						Serial1.println(indexToPlay);
-					} else if (modeToPlay == -1) {
-						Serial1.println("nothing");
+						if (modeToPlay == 0) {
+							Serial1.print("text from position ");
+							Serial1.println(indexToPlay);
+						} else if (modeToPlay == 1) {
+							Serial1.print("gif from position ");
+							Serial1.println(indexToPlay);
+						} else if (modeToPlay == 2) {
+							Serial1.print("thanks from position ");
+							Serial1.println(indexToPlay);
+						} else if (modeToPlay == -1) {
+							Serial1.println("nothing");
+						}
 					}
 
 					Serial1.print("text: "); Serial1.print(modeToggles[0]);
@@ -465,6 +494,8 @@ void serialParse() {
 					isScrolling = 0;
 					isThanking = 0;
 					gifPlaying = 0;
+					queueFlag = 0;
+					repeatFlag = 0;
 				}
 
 				else if (checkCommand(message[i][j], "begin")) {
@@ -476,6 +507,10 @@ void serialParse() {
 
 					// reset rotation
 					matrix.setRotation(rotation0);
+					rotation = 0;
+
+					// turn of repeat loop
+					repeatFlag = 0;
 				}
 
 				else if (checkCommand(message[i][j], "setrotation")) {
@@ -497,7 +532,51 @@ void serialParse() {
 				}
 
 				else if (checkCommand(message[i][j], "repeat")) {
+					colon = message[i][j].indexOf(':');
+					comma = message[i][j].indexOf(',', colon + 1);
 
+					if (comma == -1) {
+						repeatFlag = 0;
+						Serial1.println("Turning repeat off");
+					} else {
+						repeatFlag = 1;
+						repeatMode = message[i][j].substring(colon+1, comma).toInt();
+						repeatIndex = message[i][j].substring(comma+1).toInt();
+						Serial1.print("Repeating ");
+
+						if (repeatMode == 0) {
+							Serial1.print("text ");
+						} else if (repeatMode == 1) {
+							Serial1.print("gif ");
+						} else if (repeatMode == 2) {
+							Serial1.print("thanks ");
+						}
+
+						Serial1.print("in position ");
+						Serial1.println(repeatIndex);
+					}
+				}
+
+				else if (checkCommand(message[i][j], "help")) {
+					Serial1.println("Available commands:");
+					Serial1.println("\t+scroll:{0, 1} - toggle scrollText");
+					Serial1.println("\t+gif:{0, 1} - toggle playGif");
+					Serial1.println("\t+thank:{0, 1} - toggle thanks");
+					Serial1.println("\t+addText:{text to add} - adds text to textOptions");
+					Serial1.println("\t+addThank:{thank to add} - adds text to thankOptions");
+					Serial1.println("\t+status - returns status of everything");
+					Serial1.println("\t+clear - clears display until +begin is sent");
+					Serial1.println("\t+begin - starts randomSelector");
+					Serial1.println("\t+rotate:{0,90,180,270}");
+					Serial1.println("\t\t0 is back right");
+					Serial1.println("\t\t90 is back left");
+					Serial1.println("\t\t180 is front left");
+					Serial1.println("\t\t270 is front right");
+					Serial1.println("\t+queue:{0, 1, 2},{index} - queues the following to be played next");
+					Serial1.println("\t+repeat:{0, 1, 2},{index} - plays the following continuously");
+					Serial1.println("\t\t0 - text");
+					Serial1.println("\t\t1 - gif");
+					Serial1.println("\t\t2 - thanks");
 				}
 
 				message[i][j] = "";
