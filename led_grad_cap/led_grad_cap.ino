@@ -90,6 +90,7 @@ int randType;
 // randText - between 0 and the number of text options available
 int numTextOptions = 0;
 int randText;
+int isScrolling = false;
 
 // randGif - which gif to play
 int randGif;
@@ -231,7 +232,7 @@ void loop() {
 		serialParse();
 	}
 
-	playGif(0);
+	scrollText(0);
 }
 
 void serialParse() {
@@ -262,6 +263,30 @@ bool checkMode(String command, String mode) {
 }
 
 void randomSelector() {
+	;
+}
+
+void scrollText(int index) {
+	if (!isScrolling) {
+		// if not scrolling, allow setup of scrolling text
+		backgroundLayer.fillScreen(defaultBackgroundColor);
+		backgroundLayer.swapBuffers();
+
+		scrollingLayer.setColor({0xff, 0xff, 0xff});
+		backgroundLayer.setFont(font3x5);
+		scrollingLayer.setSpeed(30);
+
+		scrollingLayer.setMode(wrapForward);
+		int stringLength = textOptions[index].length();
+		char temp [stringLength];
+		textOptions[index].toCharArray(temp, stringLength);
+		scrollingLayer.start(temp, 2);
+
+		isScrolling = true;
+	} else if (!scrollingLayer.getStatus()) {
+		// if scrolling flag is true and getStatus is false, then scrolling has just stopped - reset isScrolling
+		isScrolling = false;
+	}
 
 }
 
