@@ -23,6 +23,7 @@ const uint8_t kIndexedLayerOptions = (SM_INDEXED_OPTIONS_NONE);
 SMARTMATRIX_ALLOCATE_BUFFERS(matrix, kMatrixWidth, kMatrixHeight, kRefreshDepth, kDmaBufferRows, kPanelType, kMatrixOptions);
 SMARTMATRIX_ALLOCATE_BACKGROUND_LAYER(backgroundLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kBackgroundLayerOptions);
 SMARTMATRIX_ALLOCATE_SCROLLING_LAYER(scrollingLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kScrollingLayerOptions);
+SMARTMATRIX_ALLOCATE_SCROLLING_LAYER(scrollingLayer2, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kScrollingLayerOptions);
 SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kIndexedLayerOptions);
 
 const int defaultBrightness = 100 * (255 / 100);    // 100 - full brightness
@@ -60,8 +61,14 @@ void drawPixelCallback(int16_t x, int16_t y, uint8_t red, uint8_t green, uint8_t
 
 // scrolling text content
 String textOptions [50] = {
-	"Test string 1",
+	"What the fuck did you just fucking say about me you little bitch?",
 	"Test string 2"
+};
+
+// thanking text content
+String thankOptions [50] = {
+	"My parents, Tushar and Anila Bulsara.",
+	"/r/me_irl"
 };
 
 // counting variables
@@ -101,14 +108,23 @@ bool gifPlaying = false;
 int numPatterns = 0;
 int randPattern;
 
+// int randThanks - which person to thank
+int numThanks = 0;
+int randthanks;
+bool isThanking = false;
+
 // initialize functions
 void serialParse();
 bool checkMode(String command, String mode);
 void randomSelector();
-void scrollText(int index); 	bool textFlag = false;
-//void thankYouText();			bool thankFlag = false;
-void playGif(int index);		bool gifFlag = true;
-void pattern(int index);		bool patternFlag = false;
+void scrollText(int index);	// index 0
+void playGif(int index);	// index 1
+void pattern(int index);	// index 2
+void thankYouText(int index);		// index 3
+
+bool modeToggles [] = {0, 0, 0, 0};
+int numModes;
+int queue [2];
 
 // setup function - runs once
 void setup() {
@@ -134,6 +150,7 @@ void setup() {
 	// setup matrix
 	matrix.addLayer(&backgroundLayer);
     matrix.addLayer(&scrollingLayer);
+	matrix.addLayer(&scrollingLayer2);
     matrix.addLayer(&indexedLayer);
     matrix.begin();
 
@@ -143,9 +160,8 @@ void setup() {
 
     backgroundLayer.enableColorCorrection(true);
 
-	// clear screen
-    backgroundLayer.fillScreen(defaultBackgroundColor);
-    backgroundLayer.swapBuffers();
+	backgroundLayer.fillScreen(defaultBackgroundColor);
+	backgroundLayer.swapBuffers();
 
 	// initialize the SD card at full speed
     pinMode(SD_CS, OUTPUT);
@@ -183,6 +199,9 @@ void setup() {
 	// count number of non empty text contents
 	i = 0;
 	while (textOptions[i++] != "") {numTextOptions++;}
+
+	// count number of modes
+	numModes = sizeof(modeToggles) / sizeof(bool);
 }
 
 // loop function - runs continuously
@@ -263,7 +282,7 @@ bool checkMode(String command, String mode) {
 }
 
 void randomSelector() {
-	;
+	// check if any
 }
 
 void scrollText(int index) {
@@ -273,11 +292,11 @@ void scrollText(int index) {
 		backgroundLayer.swapBuffers();
 
 		scrollingLayer.setColor({0xff, 0xff, 0xff});
-		backgroundLayer.setFont(font3x5);
-		scrollingLayer.setSpeed(30);
+		scrollingLayer.setFont(font8x13);
+		scrollingLayer.setSpeed(80);
 
 		scrollingLayer.setMode(wrapForward);
-		int stringLength = textOptions[index].length();
+		int stringLength = textOptions[index].length() + 1;
 		char temp [stringLength];
 		textOptions[index].toCharArray(temp, stringLength);
 		scrollingLayer.start(temp, 2);
@@ -286,6 +305,32 @@ void scrollText(int index) {
 	} else if (!scrollingLayer.getStatus()) {
 		// if scrolling flag is true and getStatus is false, then scrolling has just stopped - reset isScrolling
 		isScrolling = false;
+	}
+
+}
+
+void thankYouText(int index) {
+	if (!isThanking) {
+		scrollingLayer.setColor({0xff, 0xff, 0xff});
+		scrollingLayer.setOffsetFromTop(1);
+		scrollingLayer.setMode(stopped);
+		scrollingLayer.start("Thanks", 1);
+
+		scrollingLayer2.setColor({0xff, 0xff, 0xff});
+		scrollingLayer2.setFont(font6x10);
+		scrollingLayer2.setMode(wrapForward);
+		scrollingLayer2.setSpeed(40);
+		scrollingLayer2.setOffsetFromTop(matrix.getScreenHeight() / 2);
+
+		int stringLength = thankOptions[index].length() + 1;
+		char temp [stringLength];
+		thankOptions[index].toCharArray(temp, stringLength);
+		scrollingLayer2.start(temp, 2);
+
+		isThanking = true;
+	} else if (!scrollingLayer2.getStatus()) {
+		// if scrolling flag is true and getStatus is false, then scrolling has just stopped - reset isThanking
+		isThanking = false;
 	}
 
 }
