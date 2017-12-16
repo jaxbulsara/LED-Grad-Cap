@@ -110,7 +110,7 @@ String thankOptions [100] = {
 	"The internet (rip net neutrality)",
 	"Alex Koohyar",
 	"Evan Rapp",
-	"Michell Zhong",
+	"Michelle Zhong",
 	"Susan Brennan",
 	"Doug Hernandez",
 	"Melody Sweigert",
@@ -198,6 +198,9 @@ bool modeToggles [] = {0, 0, 0};
 int numModes;
 int numOptionsInMode [3];
 int queue [10];
+
+bool queueFlag = false;
+bool repeatFlag = false;
 
 // setup function - runs once
 void setup() {
@@ -427,6 +430,13 @@ void serialParse() {
 
 					// reset rotation
 					matrix.setRotation(rotation0);
+
+					// reset variables
+					modeToPlay = -1;
+					status = 0;
+					isScrolling = 0;
+					isThanking = 0;
+					gifPlaying = 0;
 				}
 
 				else if (checkCommand(message[i][j], "begin")) {
@@ -440,7 +450,7 @@ void serialParse() {
 					matrix.setRotation(rotation0);
 				}
 
-				else if (checkCommand(message[i][j], "rotate")) {
+				else if (checkCommand(message[i][j], "setrotation")) {
 					colon = message[i][j].indexOf(':');
 					int rotation = message[i][j].substring(colon+1).toInt();
 
@@ -456,6 +466,10 @@ void serialParse() {
 
 					Serial1.print("set rotation to ");
 					Serial1.println(rotation);
+				}
+
+				else if (checkCommand(message[i][j], "repeat")) {
+
 				}
 
 				message[i][j] = "";
