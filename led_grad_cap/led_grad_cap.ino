@@ -110,7 +110,7 @@ String thankOptions [100] = {
 	"The internet (rip net neutrality)",
 	"Alex Koohyar",
 	"Evan Rapp",
-	"Michell Zhong",
+	"Michelle Zhong",
 	"Susan Brennan",
 	"Doug Hernandez",
 	"Melody Sweigert",
@@ -161,11 +161,10 @@ int commandQueue [] = {0, 0};
 
 // random selection variables
 int status = 0;
-int modeToPlay;
+int modeToPlay = -1;
 int indexToPlay;
 
 // randText - between 0 and the number of text options available
-int numTextOptions = 0;
 int randText;
 int isScrolling = false;
 
@@ -175,7 +174,6 @@ unsigned long gifEndMillis;
 bool gifPlaying = false;
 
 // int randThanks - which person to thank
-int numThanks = 0;
 int randthanks;
 bool isThanking = false;
 
@@ -196,10 +194,17 @@ int playMode(int mode, int index) {
 	return funcs[mode](index);
 }
 
-bool modeToggles [] = {1, 1, 1, 0};
+bool modeToggles [] = {0, 0, 0};
 int numModes;
-int numOptionsInMode [4];
-int queue [10];
+int numOptionsInMode [3];
+int queue [10][2] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+
+bool queueFlag = false;
+bool queuePosition = 0;
+bool repeatFlag = false;
+int repeatMode, repeatIndex;
+
+int rotation = 0;
 
 // setup function - runs once
 void setup() {
@@ -329,7 +334,27 @@ void loop() {
 		serialParse();
 	}
 
-	randomSelector();
+	if (queueFlag) {
+		queueFlag = playMode(queue[queuePosition][0], queue[queuePosition][1]);
+
+		if (!queueFlag) {
+			queue[queuePosition][0] = -1;
+			queue[queuePosition][1] = -1;
+			queuePosition++;
+
+			if (queue[queuePosition][0] != -1) {
+				queueFlag = 1;
+			}
+		}
+	}
+
+	else if (repeatFlag) {
+		playMode(repeatMode, repeatIndex);
+	}
+
+	else {
+		randomSelector();
+	}
 }
 
 void serialParse() {
@@ -340,9 +365,7 @@ void serialParse() {
 		+thank:{0, 1} - toggle thank
 		+addText:{text to add} - adds text to textOptions
 		+addThank:{thank to add} - adds text to thankOptions
-		+queue:{scroll, gif, thank},{index} - queues the following to be played next
-		+repeat:{scroll, gif, thank},{index} - plays the following continuously
-		+status - returns which mode and index is playing
+		+status - returns which mode and index is playing and state of toggles
 		+clear - clears display until +begin is sent
 		+begin - starts randomSelector
 		+rotate:{0,90,180,270}
@@ -350,6 +373,11 @@ void serialParse() {
 			-90 is back left
 			-180 is front left
 			-270 is front right
+		+queue:{0, 1, 2},{index} - queues the following to be played next
+		+repeat:{0, 1, 2},{index} - plays the following continuously
+			0 - text
+			1 - gif
+			2 - thanks
 	*/
 
 	int colon, comma;
@@ -360,9 +388,195 @@ void serialParse() {
 				message[i][j].toLowerCase();
 
 				// check command type
-				if (checkCommand(message[i][j], "scroll")) {
+				if (checkCommand(message[i][j], "toggletext")) {
 					colon = message[i][j].indexOf(':');
+					modeToggles[0] = message[i][j].substring(colon+1).toInt();
+					Serial1.print("text: ");
+					Serial1.println(modeToggles[0]);
+				}
 
+				else if (checkCommand(message[i][j], "togglegif")) {
+					colon = message[i][j].indexOf(':');
+					modeToggles[1] = message[i][j].substring(colon+1).toInt();
+					Serial1.print("gif: ");
+					Serial1.println(modeToggles[1]);
+				}
+
+				else if (checkCommand(message[i][j], "togglethanks")) {
+					colon = message[i][j].indexOf(':');
+					modeToggles[2] = message[i][j].substring(colon+1).toInt();
+					Serial1.print("thanks: ");
+					Serial1.println(modeToggles[2]);
+				}
+
+				else if (checkCommand(message[i][j], "addtext")) {
+					colon = message[i][j].indexOf(':');
+					textOptions[numOptionsInMode[0]++] = message[i][j].substring(colon+1);
+					Serial1.print("added text(");
+					Serial1.print(textOptions[numOptionsInMode[0] - 1]);
+					Serial1.print(") to position ");
+					Serial1.println(numOptionsInMode[0] - 1);
+				}
+
+				else if (checkCommand(message[i][j], "addthanks")) {
+					colon = message[i][j].indexOf(':');
+					thankOptions[numOptionsInMode[2]++] = message[i][j].substring(colon+1);
+					Serial1.print("added thanks to (");
+					Serial1.print(thankOptions[numOptionsInMode[2] - 1]);
+					Serial1.print(") to position ");
+					Serial1.println(numOptionsInMode[2] - 1);
+				}
+
+				else if(checkCommand(message[i][j], "status")) {
+					if (queueFlag) {
+						Serial1.print("Currently playing queue - ");
+						if (queue[queuePosition][0] == 0) {
+							Serial1.print("text from position ");
+							Serial1.println(queue[queuePosition][1]);
+						} else if (queue[queuePosition][0] == 1) {
+							Serial1.print("gif from position ");
+							Serial1.println(queue[queuePosition][1]);
+						} else if (queue[queuePosition][0] == 2) {
+							Serial1.print("thanks from position ");
+							Serial1.println(queue[queuePosition][1]);
+						}
+					} else if (repeatFlag) {
+						Serial1.print("Currently repeating ");
+						if (repeatMode == 0) {
+							Serial1.print("text from position ");
+							Serial1.println(repeatIndex);
+						} else if (repeatMode == 1) {
+							Serial1.print("gif from position ");
+							Serial1.println(repeatIndex);
+						} else if (repeatMode == 2) {
+							Serial1.print("thanks from position ");
+							Serial1.println(repeatIndex);
+						}
+					} else {
+						Serial1.print("Currently playing ");
+
+						if (modeToPlay == 0) {
+							Serial1.print("text from position ");
+							Serial1.println(indexToPlay);
+						} else if (modeToPlay == 1) {
+							Serial1.print("gif from position ");
+							Serial1.println(indexToPlay);
+						} else if (modeToPlay == 2) {
+							Serial1.print("thanks from position ");
+							Serial1.println(indexToPlay);
+						} else if (modeToPlay == -1) {
+							Serial1.println("nothing");
+						}
+					}
+
+					Serial1.print("text: "); Serial1.print(modeToggles[0]);
+					Serial1.print("; gif: "); Serial1.print(modeToggles[1]);
+					Serial1.print("; thanks: "); Serial1.println(modeToggles[2]);
+
+					Serial1.print("rotation: ");
+					Serial1.println(rotation);
+				}
+
+				else if (checkCommand(message[i][j], "clear")) {
+					// turn all modes off
+					Serial1.println("Turning all modes off");
+					for (k = 0; k < 3; k++) {
+						modeToggles[k] = 0;
+					}
+
+					// reset rotation
+					matrix.setRotation(rotation0);
+					rotation = 0;
+
+					// reset variables
+					modeToPlay = -1;
+					status = 0;
+					isScrolling = 0;
+					isThanking = 0;
+					gifPlaying = 0;
+					queueFlag = 0;
+					repeatFlag = 0;
+				}
+
+				else if (checkCommand(message[i][j], "begin")) {
+					// turn all modes on
+					Serial1.println("Turning all modes on");
+					for (k = 0; k < 3; k++) {
+						modeToggles[k] = 1;
+					}
+
+					// reset rotation
+					matrix.setRotation(rotation0);
+					rotation = 0;
+
+					// turn of repeat loop
+					repeatFlag = 0;
+				}
+
+				else if (checkCommand(message[i][j], "setrotation")) {
+					colon = message[i][j].indexOf(':');
+					rotation = message[i][j].substring(colon+1).toInt();
+
+					if (rotation == 0) {
+						matrix.setRotation(rotation0);
+					} else if (rotation == 90) {
+						matrix.setRotation(rotation90);
+					} else if (rotation == 180) {
+						matrix.setRotation(rotation180);
+					} else if (rotation == 270) {
+						matrix.setRotation(rotation270);
+					}
+
+					Serial1.print("set rotation to ");
+					Serial1.println(rotation);
+				}
+
+				else if (checkCommand(message[i][j], "repeat")) {
+					colon = message[i][j].indexOf(':');
+					comma = message[i][j].indexOf(',', colon + 1);
+
+					if (comma == -1) {
+						repeatFlag = 0;
+						Serial1.println("Turning repeat off");
+					} else {
+						repeatFlag = 1;
+						repeatMode = message[i][j].substring(colon+1, comma).toInt();
+						repeatIndex = message[i][j].substring(comma+1).toInt();
+						Serial1.print("Repeating ");
+
+						if (repeatMode == 0) {
+							Serial1.print("text ");
+						} else if (repeatMode == 1) {
+							Serial1.print("gif ");
+						} else if (repeatMode == 2) {
+							Serial1.print("thanks ");
+						}
+
+						Serial1.print("in position ");
+						Serial1.println(repeatIndex);
+					}
+				}
+
+				else if (checkCommand(message[i][j], "help")) {
+					Serial1.println("Available commands:");
+					Serial1.println("\t+scroll:{0, 1} - toggle scrollText");
+					Serial1.println("\t+gif:{0, 1} - toggle playGif");
+					Serial1.println("\t+thank:{0, 1} - toggle thanks");
+					Serial1.println("\t+addText:{text to add} - adds text to textOptions");
+					Serial1.println("\t+addThank:{thank to add} - adds text to thankOptions");
+					Serial1.println("\t+status - returns status of everything");
+					Serial1.println("\t+clear - clears display until +begin is sent");
+					Serial1.println("\t+begin - starts randomSelector");
+					Serial1.println("\t+rotate:{0,90,180,270}");
+					Serial1.println("\t\t0 is back right");
+					Serial1.println("\t\t90 is back left");
+					Serial1.println("\t\t180 is front left");
+					Serial1.println("\t\t270 is front right");
+					Serial1.println("\t+queue:{0, 1, 2},{index} - queues the following to be played next");
+					Serial1.println("\t+repeat:{0, 1, 2},{index} - plays the following continuously");
+					Serial1.println("\t\t0 - text");
+					Serial1.println("\t\t1 - gif");
+					Serial1.println("\t\t2 - thanks");
 				}
 
 				message[i][j] = "";
@@ -381,7 +595,7 @@ bool checkCommand(String command, String mode) {
 }
 
 void randomSelector() {
-	if (!status) {
+	if (!status && (modeToggles[0] || modeToggles[1] || modeToggles[2])) {
 		// generate a random number and check if that index is on
 		do {
 			modeToPlay = random(numModes);
@@ -391,9 +605,20 @@ void randomSelector() {
 		// depending on the mode, choose a different index to generate
 		indexToPlay = random(numOptionsInMode[modeToPlay]);
 	}
+	if (!(modeToggles[0] || modeToggles[1] || modeToggles[2])) {
+		// if nothing is toggled on, clear all
+		// something might get stuck on the screen if playMode isn't called continuously
+		backgroundLayer.fillScreen(defaultBackgroundColor);
+		backgroundLayer.swapBuffers();
+		scrollingLayer.start("", 1);
+		scrollingLayer2.start("", 1);
 
-	// play the mode and index generated
-	status = playMode(modeToPlay, indexToPlay);
+		// set mode to nothing
+		modeToPlay = -1;
+	} else {
+		// play the mode and index generated
+		status = playMode(modeToPlay, indexToPlay);
+	}
 }
 
 int scrollText(int index) {
@@ -443,7 +668,7 @@ int thankYouText(int index) {
 		scrollingLayer2.setFont(font6x10);
 		scrollingLayer2.setMode(wrapForward);
 		scrollingLayer2.setSpeed(40);
-		scrollingLayer2.setOffsetFromTop(matrix.getScreenHeight() / 2);
+		scrollingLayer2.setOffsetFromTop(matrix.getScreenHeight() / 2 - 1);
 
 		int stringLength = thankOptions[index].length() + 1;
 		char temp [stringLength];
