@@ -28,7 +28,7 @@ SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer, kMatrixWidth, kMatrixHeight, CO
 
 const int defaultBrightness = 100 * (255 / 100);    // 100 - full brightness
 
-const int defaultScrollOffset = 6;
+const int defaultScrollOffset = 4;
 const rgb24 defaultBackgroundColor = {0, 0, 0}; // black
 
 // gif player
@@ -85,14 +85,9 @@ String message [2][10];
 int commandQueue [] = {0, 0};
 
 // random selection variables
-/*
-randType
-	0 - scrolling text
-	1 - gif
-	2 - pattern
-	3 - thank you
-*/
-int randType;
+int status = 0;
+int modeToPlay;
+int indexToPlay;
 
 // randText - between 0 and the number of text options available
 int numTextOptions = 0;
@@ -115,15 +110,25 @@ bool isThanking = false;
 
 // initialize functions
 void serialParse();
-bool checkMode(String command, String mode);
+bool checkCommand(String command, String mode);
 void randomSelector();
-void scrollText(int index);	// index 0
-void playGif(int index);	// index 1
-void pattern(int index);	// index 2
-void thankYouText(int index);		// index 3
+int scrollText(int index);	// index 0
+int playGif(int index);	// index 1
+int thankYouText(int index);		// index 2
+int playPattern(int index);	// index 3
 
-bool modeToggles [] = {0, 0, 0, 0};
+// function indexing modes
+int playMode(int mode, int index) {
+	typedef int (*f) (int);
+
+	static f funcs[] = {scrollText, playGif, thankYouText, playPattern};
+
+	return funcs[mode](index);
+}
+
+bool modeToggles [] = {1, 1, 1, 0};
 int numModes;
+int numOptionsInMode [4];
 int queue [2];
 
 // setup function - runs once
@@ -174,9 +179,9 @@ void setup() {
     }
 
 	// Determine how many animated GIF files exist
-    numGifs = enumerateGIFFiles(GIF_DIRECTORY, false);
+    numOptionsInMode[1] = enumerateGIFFiles(GIF_DIRECTORY, false);
 
-    if(numGifs < 0) {
+    if(numOptionsInMode[1] < 0) {
 #if ENABLE_SCROLLING == 1
         scrollingLayer.start("No gifs directory", -1);
 #endif
@@ -184,7 +189,7 @@ void setup() {
         while(1);
     }
 
-    if(!numGifs) {
+    if(!numOptionsInMode[1]) {
 #if ENABLE_SCROLLING == 1
         scrollingLayer.start("Empty gifs directory", -1);
 #endif
@@ -194,11 +199,14 @@ void setup() {
 
 	// random selection setup
 	// random seed
-	randomSeed(analogRead(14));
+	randomSeed(analogRead(33));
 
 	// count number of non empty text contents
 	i = 0;
-	while (textOptions[i++] != "") {numTextOptions++;}
+	while (textOptions[i++] != "") {numOptionsInMode[0]++;}
+
+	i = 0;
+	while (thankOptions[i++] != "") {numOptionsInMode[2]++;}
 
 	// count number of modes
 	numModes = sizeof(modeToggles) / sizeof(bool);
@@ -251,7 +259,7 @@ void loop() {
 		serialParse();
 	}
 
-	scrollText(0);
+	randomSelector();
 }
 
 void serialParse() {
@@ -262,7 +270,7 @@ void serialParse() {
 				message[i][j].toLowerCase();
 
 				// check command type
-				if (checkMode(message[i][j], "scrolltext")) {
+				if (checkCommand(message[i][j], 1)) {
 
 				}
 
@@ -275,46 +283,71 @@ void serialParse() {
 	}
 }
 
-bool checkMode(String command, String mode) {
+bool checkCommand(String command, int mode) {
 	if (command.indexOf(mode) > 0) {
 		return 1;
 	} else {return 0;}
 }
 
 void randomSelector() {
-	// check if any
+
+	if (!status) {
+		// generate a random number and check if that index is on
+		do {
+			modeToPlay = random(numModes);
+		} while (!modeToggles[modeToPlay]);
+
+		// now n is the mode to be picked
+		// depending on the mode, choose a different index to generate
+		indexToPlay = random(numOptionsInMode[modeToPlay]);
+	}
+
+	// play the mode and index generated
+	status = playMode(modeToPlay, indexToPlay);
 }
 
-void scrollText(int index) {
+int scrollText(int index) {
 	if (!isScrolling) {
 		// if not scrolling, allow setup of scrolling text
+		// clear background
 		backgroundLayer.fillScreen(defaultBackgroundColor);
 		backgroundLayer.swapBuffers();
 
 		scrollingLayer.setColor({0xff, 0xff, 0xff});
 		scrollingLayer.setFont(font8x13);
-		scrollingLayer.setSpeed(80);
+		scrollingLayer.setOffsetFromTop(defaultScrollOffset);
+		scrollingLayer.setSpeed(40);
 
 		scrollingLayer.setMode(wrapForward);
 		int stringLength = textOptions[index].length() + 1;
 		char temp [stringLength];
 		textOptions[index].toCharArray(temp, stringLength);
-		scrollingLayer.start(temp, 2);
+		scrollingLayer.start(temp, 1);
 
 		isScrolling = true;
 	} else if (!scrollingLayer.getStatus()) {
 		// if scrolling flag is true and getStatus is false, then scrolling has just stopped - reset isScrolling
 		isScrolling = false;
+
+		// clear background
+		backgroundLayer.fillScreen(defaultBackgroundColor);
+		backgroundLayer.swapBuffers();
 	}
 
+	return isScrolling;
 }
 
-void thankYouText(int index) {
+int thankYouText(int index) {
 	if (!isThanking) {
+		// clear background
+		backgroundLayer.fillScreen(defaultBackgroundColor);
+		backgroundLayer.swapBuffers();
+
 		scrollingLayer.setColor({0xff, 0xff, 0xff});
+		scrollingLayer.setFont(font3x5);
 		scrollingLayer.setOffsetFromTop(1);
 		scrollingLayer.setMode(stopped);
-		scrollingLayer.start("Thanks", 1);
+		scrollingLayer.start("Thanks!", 1);
 
 		scrollingLayer2.setColor({0xff, 0xff, 0xff});
 		scrollingLayer2.setFont(font6x10);
@@ -325,18 +358,26 @@ void thankYouText(int index) {
 		int stringLength = thankOptions[index].length() + 1;
 		char temp [stringLength];
 		thankOptions[index].toCharArray(temp, stringLength);
-		scrollingLayer2.start(temp, 2);
+		scrollingLayer2.start(temp, 1);
 
 		isThanking = true;
 	} else if (!scrollingLayer2.getStatus()) {
 		// if scrolling flag is true and getStatus is false, then scrolling has just stopped - reset isThanking
 		isThanking = false;
+
+		// hack to make sure thanks goes away
+		scrollingLayer.start("", 1);
 	}
 
+	return isThanking;
 }
 
-void playGif(int index) {
+int playGif(int index) {
 	if (!gifPlaying){
+		// clear background
+		backgroundLayer.fillScreen(defaultBackgroundColor);
+		backgroundLayer.swapBuffers();
+
 		if (openGifFilenameByIndex(GIF_DIRECTORY, index) >= 0) {
 			// Can clear screen for new animation here, but this might cause flicker with short animations
 			// matrix.fillScreen(COLOR_BLACK);
@@ -355,4 +396,9 @@ void playGif(int index) {
 		gifPlaying = false;
 	}
 	decoder.decodeFrame();
+	return gifPlaying;
+}
+
+int playPattern(int index) {
+	return 0;
 }
